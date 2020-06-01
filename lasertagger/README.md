@@ -1,3 +1,7 @@
+Source of lasertagger code: [https://github.com/google-research/lasertagger](https://github.com/google-research/lasertagger)
+
+Source of BERT code: [https://github.com/google-research/bert](https://github.com/google-research/bert)
+
 # LaserTagger
 
 LaserTagger is a text-editing model which predicts a sequence of token-level

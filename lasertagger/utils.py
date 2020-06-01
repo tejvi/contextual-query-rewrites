@@ -56,7 +56,7 @@ def yield_sources_and_targets(
     yield_example_fn = _yield_wikisplit_examples
   elif input_format == 'discofuse':
     yield_example_fn = _yield_discofuse_examples
-   elif input_format == 'wikifuse':
+  elif input_format == 'wikifuse':
     yield_example_fn = _yield_wikifuse_examples
   else:
     raise ValueError('Unsupported input_format: {}'.format(input_format))
