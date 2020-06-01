@@ -43,7 +43,7 @@ flags.DEFINE_string(
     'Path to the input file containing examples to be converted to '
     'tf.Examples.')
 flags.DEFINE_enum(
-    'input_format', None, ['wikisplit', 'discofuse'],
+    'input_format', None, ['wikisplit', 'discofuse', 'wikifuse'],
     'Format which indicates how to parse the input_file.')
 flags.DEFINE_string('output_tfrecord', None,
                     'Path to the resulting TFRecord file.')

@@ -48,7 +48,7 @@ flags.DEFINE_string(
     'vocabulary is optimized (see `input_format` flag and utils.py for '
     'documentation).')
 flags.DEFINE_enum(
-    'input_format', None, ['wikisplit', 'discofuse'],
+    'input_format', None, ['wikisplit', 'discofuse', 'wikifuse'],
     'Format which indicates how to parse the `input_file`. See utils.py for '
     'documentation on the different formats.')
 flags.DEFINE_integer(

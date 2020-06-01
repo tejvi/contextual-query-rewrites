@@ -38,7 +38,7 @@ flags.DEFINE_string(
     'Path to the input file containing examples for which to compute '
     'predictions.')
 flags.DEFINE_enum(
-    'input_format', None, ['wikisplit', 'discofuse'],
+    'input_format', None, ['wikisplit', 'discofuse', 'wikifuse'],
     'Format which indicates how to parse the input_file.')
 flags.DEFINE_string(
     'output_file', None,
