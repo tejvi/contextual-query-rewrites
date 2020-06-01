@@ -1,0 +1,3 @@
+[submodule "lasertagger"]
+	path = lasertagger
+	url = https://github.com/tejvi/lasertagger.git
