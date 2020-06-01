@@ -44,6 +44,13 @@ after setting the paths in the beginning of the script.
 
 **Note:** Text should be tokenized with spaces separating the tokens before applying LaserTagger.
 
+### Sentence fusion
+
+The wikisplit example works on the wikisplit dataset for split and rephrase. To use the same model and dataset to train/use the model for sentence fusion, run the commands in the following sections, but by replacing ```wikisplit``` with ```wikifuse``` in the ```--input_format``` tag.
+
+To use the discofuse dataset, replace ```wikisplit``` with ```discofuse```.
+
+
 ### 1. Phrase Vocabulary Optimization
 
 Download the [WikiSplit](https://github.com/google-research-datasets/wiki-split)
