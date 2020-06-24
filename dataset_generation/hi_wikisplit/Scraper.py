@@ -170,5 +170,10 @@ class Scraper:
         logging.info("[DONE] all raw data written to {0}".format(self.output_dir_))
 
 if __name__ == '__main__':
-    scraper = Scraper("hiwiki-20200503-all-titles-in-ns-0")
+    
+    if len(sys.argv) < 2:
+        print("please specify the path to the title dump file")
+        exit()
+        
+    scraper = Scraper(sys.argv[1])
     scraper.write_raw_data()
