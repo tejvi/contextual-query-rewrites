@@ -15,7 +15,7 @@ def batch_translate_text(
     src_lang="en",
     dst_lang =["hi"]
 ):
-    """Translates a batch of texts on GCS and stores the result in a GCS location."""
+    """Batch translation of a file stored on GCS"""
 
     client = translate.TranslationServiceClient()
 
@@ -46,7 +46,10 @@ def batch_translate_text(
 
 
 def translate_text(line, src_lang, dst_lang, project_id):
-    
+    """
+    Converts a line of text from src language to destination language
+    """
+
     client = translate.TranslationServiceClient()
     parent = client.location_path(project_id, "global")
     
@@ -66,6 +69,12 @@ def translate_text(line, src_lang, dst_lang, project_id):
 def batch_translate_file(input_path, output_file, gcs_bucket, project_id,
                         src_lang = "en", dst_lang ="hi",
                         threshold=20):
+
+    """
+    File is transferred to the GCS,
+    gets translated and gets copied back
+    """
+    
     move_cmd = "gsutil -m cp {0} {1}".format(input_path,
                     gcs_bucket +'/'+ input_path)
     logging.info(move_cmd)
@@ -75,7 +84,8 @@ def batch_translate_file(input_path, output_file, gcs_bucket, project_id,
                         gcs_bucket + '/intermediate/',
                         project_id)
 
-    copy_back_cmd = "gsutil -m cp -r {0} {1}".format(gcs_bucket + '/intermediate/*.' + input_path.split('.')[1] + '/', output_file)
+    copy_back_cmd = "gsutil -m cp -r {0} {1}".format(gcs_bucket + '/intermediate/*.' \
+                    + input_path.split('.')[1] + '/', output_file)
     logging.info("[EXECUTING] {0}".format(copy_back_cmd))
     os.system(copy_back_cmd)
 
@@ -85,7 +95,15 @@ def batch_translate_file(input_path, output_file, gcs_bucket, project_id,
 
     logging.info("[WROTE] {0}".format(output_file))
 
-def translate_data(input_path, output_file, config_file="config.json", src_lang = "en", dst_lang ="hi", transfer_to_gcs=True, remove_intermediate=True, multithreaded=False, threshold=20):
+def translate_data(input_path, output_file, config_file="config.json", 
+                    src_lang = "en", dst_lang ="hi", threshold=20):
+    """
+    translates data in the given input path.
+    if the input_path is a directory, its individual files are translated
+
+    files with greater than the number of elements specified in the threshold 
+    are batch translated
+    """
 
     with open(config_file) as json_file:
         config = Json.load(json_file)
@@ -96,7 +114,8 @@ def translate_data(input_path, output_file, config_file="config.json", src_lang 
     if os.path.isdir(input_path):
  
         for file in os.listdir(input_path):
-            batch_translate_file(os.path.join(input_path, file), './outputs/' + file, gcs_bucket, project_id,
+            batch_translate_file(os.path.join(input_path, file), './outputs/' + file, 
+                                gcs_bucket, project_id,
                                 src_lang, dst_lang, threshold)
                                 
 
@@ -112,7 +131,8 @@ def translate_data(input_path, output_file, config_file="config.json", src_lang 
             outfile = open(output_file, 'wb')
 
             for line in file:
-                outfile.write(translate_text(line.strip(), src_lang, dst_lang, project_id).encode() + '\n'.encode())
+                outfile.write(translate_text(line.strip(), src_lang, dst_lang, project_id).encode() \
+                                 + '\n'.encode())
             
             outfile.close()
 
