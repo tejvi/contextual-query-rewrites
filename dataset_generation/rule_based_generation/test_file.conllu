@@ -1,0 +1,16 @@
+# sent_id = test-s1
+# text = इसके अतिरिक्त गुग्गुल कुंड, भीम गुफा तथा भीमशिला भी दर्शनीय स्थल हैं ।
+1	इसके	यह	PRON	PRP	Case=Acc,Gen|Number=Sing|Person=3|Poss=Yes|PronType=Prs	12	nmod	_	Vib=0_अतिरिक्त|Tam=ke|ChunkId=NP|ChunkType=head|Translit=isake
+2	अतिरिक्त	अतिरिक्त	ADP	PSP	AdpType=Post	1	case	_	ChunkId=NP|ChunkType=child|Translit=atirikta
+3	गुग्गुल	गुग्गुल	PROPN	NNPC	Case=Nom|Gender=Masc|Number=Sing|Person=3	4	compound	_	Vib=0|Tam=0|ChunkId=NP2|ChunkType=child|Translit=guggula
+4	कुंड	कुंड	PROPN	NNP	Case=Nom|Gender=Masc|Number=Sing|Person=3	12	nsubj	_	SpaceAfter=No|Vib=0|Tam=0|ChunkId=NP2|ChunkType=head|Translit=kuṁḍa
+5	,	COMMA	PUNCT	SYM	_	7	punct	_	ChunkId=NP2|ChunkType=child|Translit=,
+6	भीम	भीम	PROPN	NNPC	Case=Nom|Gender=Masc|Number=Sing|Person=3	7	compound	_	Vib=0|Tam=0|ChunkId=NP3|ChunkType=child|Translit=bhīma
+7	गुफा	गुफा	PROPN	NNP	Case=Nom|Gender=Fem|Number=Sing|Person=3	4	conj	_	Vib=0|Tam=0|ChunkId=NP3|ChunkType=head|Translit=guphā
+8	तथा	तथा	CCONJ	CC	_	9	cc	_	ChunkId=CCP|ChunkType=head|Translit=tathā
+9	भीमशिला	भीमशिला	PROPN	NNP	Case=Nom|Gender=Fem|Number=Sing|Person=3	4	conj	_	Vib=0|Tam=0|ChunkId=NP4|ChunkType=head|Translit=bhīmaśilā
+10	भी	भी	PART	RP	_	9	dep	_	ChunkId=NP4|ChunkType=child|Translit=bhī
+11	दर्शनीय	दर्शनीय	ADJ	JJ	Case=Nom	12	amod	_	ChunkId=NP5|ChunkType=child|Translit=darśanīya
+12	स्थल	स्थल	NOUN	NN	Case=Nom|Gender=Masc|Number=Plur|Person=3	0	root	_	Vib=0|Tam=0|ChunkId=NP5|ChunkType=head|Translit=sthala
+13	हैं	है	AUX	VM	Mood=Ind|Number=Plur|Person=3|Tense=Pres|VerbForm=Fin|Voice=Act	12	cop	_	Vib=है|Tam=hE|ChunkId=VGF|ChunkType=head|Stype=declarative|Translit=haiṁ
+14	।	।	PUNCT	SYM	_	12	punct	_	ChunkId=BLK|ChunkType=head|Translit=.
