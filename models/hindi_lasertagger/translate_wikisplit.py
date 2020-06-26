@@ -3,7 +3,7 @@ import sys
 
 sys.path.append('./../utils/')
 sys.path.append('./models/utils/')
-import preprocess_utils as preprocess
+import preprocess_translate_data as preprocess
 import translate_utils as translate
 
 

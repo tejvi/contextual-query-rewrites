@@ -1,5 +1,5 @@
 import unittest
-import preprocess_utils
+import preprocess_translate_data
 import os
 import shutil
 
@@ -10,7 +10,7 @@ class TestRawData(unittest.TestCase):
         file.write(" a <::::> b \t x \n")
         file.close()
 
-        preprocess_utils.split(['<::::>', '\t'], 'dummy_file.txt',
+        preprocess_translate_data.split(['<::::>', '\t'], 'dummy_file.txt',
                                'dummy_output.txt')
 
         file = open("dummy_output.txt", 'r')
@@ -30,7 +30,7 @@ class TestRawData(unittest.TestCase):
         file.write(" a <::::> b \t x \n")
         file.close()
 
-        preprocess_utils.split(['<::::>', '\t'],
+        preprocess_translate_data.split(['<::::>', '\t'],
                                'dummy_file.txt',
                                'dummy_output',
                                chunk_size=1)
@@ -56,7 +56,7 @@ class TestRawData(unittest.TestCase):
         [file.write(x) for x in data]
         file.close()
 
-        preprocess_utils.merge_wikifuse('dummy_file.txt', 'dummy_output.txt')
+        preprocess_translate_data.merge_wikifuse('dummy_file.txt', 'dummy_output.txt')
 
         result = open("dummy_output.txt", 'r').readlines()
 
@@ -78,7 +78,7 @@ class TestRawData(unittest.TestCase):
         file1.close()
         file2.close()
 
-        preprocess_utils.merge_wikifuse('dummy_output', 'dummy_output.txt')
+        preprocess_translate_data.merge_wikifuse('dummy_output', 'dummy_output.txt')
 
         result = open("dummy_output.txt", 'r').readlines()
 
