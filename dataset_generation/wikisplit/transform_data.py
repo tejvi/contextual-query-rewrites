@@ -4,9 +4,12 @@ import sys
 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
+
 class RawData:
-    def __init__(self, input_dir = "./raw_data", output_file = "output.tsv",
-                 sentence_boundary_char = '।'):
+    def __init__(self,
+                 input_dir="./raw_data",
+                 output_file="output.tsv",
+                 sentence_boundary_char='।'):
         """
         RawData class is used for cleaning and transforming the raw data collected 
         into a tsv file that can be fed to lasertagger.
@@ -32,42 +35,40 @@ class RawData:
 
         braces_counter = 0
         brackets_counter = 0
-        round_flag = 0
         ref_flag = 0
         or_flag = 0
 
-        
         if "<::::>" not in raw_line:
             return ""
 
         cleaned_string = ""
         i = 0
-        while(i < len(raw_line)):
+        while i < len(raw_line):
 
             if raw_line[i] == '{':
                 braces_counter += 1
-            
+
             elif raw_line[i] == '}':
                 or_flag = 0
                 braces_counter -= 1
 
             elif raw_line[i] == '[':
                 brackets_counter += 1
-            
+
             elif raw_line[i] == ']':
                 or_flag = 0
                 brackets_counter -= 1
 
             elif raw_line[i] == '|':
                 or_flag = 1
-            
+
             elif raw_line[i:].startswith("&lt;ref&gt;"):
                 ref_flag = 1
-                i+=len("&lt;ref&gt;")
+                i += len("&lt;ref&gt;")
 
             elif raw_line[i:].startswith("&lt;ref"):
                 ref_flag = 1
-                i+=len("&lt;ref")
+                i += len("&lt;ref")
 
             elif raw_line[i:].startswith("&lt;/ref&gt;"):
                 ref_flag = 0
@@ -75,17 +76,17 @@ class RawData:
 
             elif raw_line[i:].startswith("&gt;।"):
                 ref_flag = 0
-                i += len("&gt;।") -1
+                i += len("&gt;।") - 1
 
             elif raw_line[i:].startswith("&gt;"):
                 ref_flag = 0
-                i += len("&gt;") -1
-            
+                i += len("&gt;") - 1
+
             elif braces_counter == 0:
                 if not or_flag and not ref_flag:
                     cleaned_string += raw_line[i]
-        
-            i+=1
+
+            i += 1
 
         cleaned_string = cleaned_string.replace('&lt;', '')
         return cleaned_string
@@ -98,14 +99,18 @@ class RawData:
         cleaned_lines is the output from initial cleaning
         """
         plausible = []
-        
-        for i in range(len(cleaned_lines)):
-            if ('<::::>' in cleaned_lines[i]):
-                x, y = cleaned_lines[i].split('<::::>')
-                x = x.count(self.sentence_boundary_)
-                y = y.count(self.sentence_boundary_)
 
-                if x and y and (((x-y) > 0 and (x - y) < 3) or ((y - x) > 0 and (y - x) < 3)):
+        for i in range(len(cleaned_lines)):
+            if '<::::>' in cleaned_lines[i]:
+                first, second = cleaned_lines[i].split('<::::>')
+                first_count = first.count(self.sentence_boundary_)
+                second_count = second.count(self.sentence_boundary_)
+
+                if first_count and second_count and (
+                    ((first_count - second_count) > 0 and
+                     (first_count - second_count) < 3) or
+                    ((second_count - first_count) > 0 and
+                     (second_count - first_count) < 3)):
                     plausible.extend([cleaned_lines[i]])
 
         return plausible
@@ -134,17 +139,18 @@ class RawData:
                     == sent2[len(sent2) - end - 1].strip()):
                     end += 1
 
-                new_fused = self.sentence_boundary_.join(sent1[start:len(sent1) - end]) + self.sentence_boundary_
-                new_split = self.sentence_boundary_.join(sent2[start:len(sent2) - end]) + self.sentence_boundary_
+                new_fused = self.sentence_boundary_.join(
+                    sent1[start:len(sent1) - end]) + self.sentence_boundary_
+                new_split = self.sentence_boundary_.join(
+                    sent2[start:len(sent2) - end]) + self.sentence_boundary_
 
                 final.append(new_fused + " <::::> " + new_split)
-                
-            except Exception as e:
-                logging.info("[FAILED] trimming {1}, {0}".format(e, line))
-        
+
+            except Exception as error:
+                logging.info("[FAILED] trimming {1}, {0}".format(error, line))
+
         return final
 
-    
     def match_trigrams(self, plausible_lines):
         """
         as outlined in the wikisplit paper, to decide whether the edited sentences
@@ -167,18 +173,29 @@ class RawData:
             if fused.count(self.sentence_boundary_) == 1 \
                 and split.count(self.sentence_boundary_) == 2:
                 # look at the trigram prefix and trigram suffix
-                fused_prefix_list = list(filter(lambda x: x != '', fused.split(' ')))[:3]
-                split_prefix_list = list(filter(lambda x: x != '', split.split(' ')))[:3]
-                
-                
+                fused_prefix_list = list(
+                    filter(lambda x: x != '', fused.split(' ')))[:3]
+                split_prefix_list = list(
+                    filter(lambda x: x != '', split.split(' ')))[:3]
+
                 if fused_prefix_list == split_prefix_list:
-                    
-                    fused_suffix_list = list(filter(lambda x: x != '', fused.split(' ')))[-3:]
-                    split_suffix_list = list(filter(lambda x: x != '', split.split(' ')))[-3:]
-                    
-                    if fused_suffix_list == split_suffix_list: 
-                        split1_suffix_list = list(filter(lambda x: x != '', split.split(self.sentence_boundary_)[0].split(' ')))[-3:]
-                        split2_suffix_list = list(filter(lambda x: x != '', split.split(self.sentence_boundary_)[1].split(' ')))[-3:]
+
+                    fused_suffix_list = list(
+                        filter(lambda x: x != '', fused.split(' ')))[-3:]
+                    split_suffix_list = list(
+                        filter(lambda x: x != '', split.split(' ')))[-3:]
+
+                    if fused_suffix_list == split_suffix_list:
+                        split1_suffix_list = list(
+                            filter(
+                                lambda x: x != '',
+                                split.split(self.sentence_boundary_)[0].split(
+                                    ' ')))[-3:]
+                        split2_suffix_list = list(
+                            filter(
+                                lambda x: x != '',
+                                split.split(self.sentence_boundary_)[1].split(
+                                    ' ')))[-3:]
 
                         if split1_suffix_list != split2_suffix_list:
                             suffix_matched.append(line)
@@ -202,16 +219,20 @@ class RawData:
 
             cleaned = [self.clean_initial(line) for line in content]
             plausible_paragraphs = self.get_plausible_lines(cleaned)
-            trimmed_paragraphs = self.trim_surrounding_sentences(plausible_paragraphs)
+            trimmed_paragraphs = self.trim_surrounding_sentences(
+                plausible_paragraphs)
             matches = self.match_trigrams(trimmed_paragraphs)
 
             for line in matches:
-                outfile.write("{0}\t{1} <::::> {2}\n".format(line.split('<::::>')[1],
-                        line.split('<::::>')[0].split(self.sentence_boundary_)[0] + self.sentence_boundary_,
-                        line.split('<::::>')[0].split(self.sentence_boundary_)[1] + self.sentence_boundary_).encode())
-            
-        
+                outfile.write("{0}\t{1} <::::> {2}\n".format(
+                    line.split('<::::>')[1],
+                    line.split('<::::>')[0].split(self.sentence_boundary_)[0] +
+                    self.sentence_boundary_,
+                    line.split('<::::>')[0].split(self.sentence_boundary_)[1] +
+                    self.sentence_boundary_).encode())
+
         outfile.close()
+
 
 if __name__ == '__main__':
     raw_data = RawData()
