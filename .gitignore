@@ -1,0 +1,6 @@
+.vscode
+__pycache__
+raw_data
+hiwiki-*
+*.tsv
+.DS_Store
