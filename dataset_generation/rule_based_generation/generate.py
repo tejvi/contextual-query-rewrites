@@ -8,7 +8,6 @@ class Generator:
     """
     Generates the dataset based on a set of rules
     """
-
     def __init__(self,
                  input_file,
                  output_file,
@@ -34,34 +33,34 @@ class Generator:
 
         self.ignore_projections_ = ignore_projections
 
-        self.split_ = self.write_permutations
+        self.split_ = self.get_permutations
         if split == "pairs":
-            self.split_ = self.write_pairs
+            self.split_ = self.get_pairs
 
-    def write_permutations(self, chunks, full_sentence):
+    def get_permutations(self, chunks):
         """
-         writes the permutations to the output file.
+         returns the permutations of the chunks
         """
-        output = open(self.output_path_, 'wb')
+        permutations_list = []
         chunks.append('<::::>')
 
         for instance in permutations(chunks):
-            output.write(" {0} \t {1} \n".format(
-                full_sentence, " ".join(instance).strip()).encode())
-        output.close()
+            permutations_list.append(" ".join(instance).strip())
 
-    def write_pairs(self, chunks, full_sentence):
+        return permutations_list
+
+    def get_pairs(self, chunks):
         """
         writes the pairs to the output file
         """
-        output = open(self.output_path_, 'wb')
+        pairs = []
 
         for i in range(len(chunks)):
             for j in range(i + 1, len(chunks)):
-                output.write("{0} \t {1} <::::> {2} \n".format(
-                    full_sentence, chunks[i].strip(),
-                    chunks[j].strip()).encode())
-        output.close()
+                pairs.append(" {0} <::::> {1} ".format(chunks[i].strip(),
+                                                       chunks[j].strip()))
+
+        return pairs
 
     def to_string_rec(self, tokens_to_add, token_list):
         """
@@ -91,6 +90,7 @@ class Generator:
         output format: full_sentence \t split1 <::::> split2
         """
         i = 0
+        output_file = open(self.output_path_, 'wb')
 
         for line in conllu.parse_tree_incr(open(self.input_, 'r')):
             chunks = []
@@ -110,11 +110,16 @@ class Generator:
                                         (child.__dict__['token']['form'],
                                          child.__dict__['token']['id'])]))
 
-            self.split_(chunks, full_sentence)
+            splits = self.split_(chunks)
+
+            [
+                output_file.write(" {0} \t {1} \n".format(
+                    full_sentence, split).encode()) for split in splits
+            ]
 
             logging.info("[WROTE] : {0}th sentence ".format(i))
             i += 1
+        output_file.close()
 
 if __name__ == '__main__':
     Generator(sys.argv[1], sys.argv[2]).generate()
-    
