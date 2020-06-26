@@ -3,14 +3,15 @@ import preprocess_utils
 import os
 import shutil
 
-class TestRawData(unittest.TestCase):
 
+class TestRawData(unittest.TestCase):
     def test_split(self):
         file = open("dummy_file.txt", 'w')
         file.write(" a <::::> b \t x \n")
         file.close()
 
-        preprocess_utils.split(['<::::>', '\t'], 'dummy_file.txt', 'dummy_output.txt')
+        preprocess_utils.split(['<::::>', '\t'], 'dummy_file.txt',
+                               'dummy_output.txt')
 
         file = open("dummy_output.txt", 'r')
         data = file.readlines()
@@ -18,18 +19,21 @@ class TestRawData(unittest.TestCase):
 
         os.remove("dummy_output.txt")
         os.remove("dummy_file.txt")
-        
+
         expected = [' a \n', ' b \n', ' x \n']
-     
+
         self.assertEqual(data, expected)
-    
+
     def test_split_chunks(self):
         file = open("dummy_file.txt", 'w')
         file.write(" a <::::> b \t x \n")
         file.write(" a <::::> b \t x \n")
         file.close()
 
-        preprocess_utils.split(['<::::>', '\t'], 'dummy_file.txt', 'dummy_output', chunk_size = 1)
+        preprocess_utils.split(['<::::>', '\t'],
+                               'dummy_file.txt',
+                               'dummy_output',
+                               chunk_size=1)
 
         data = []
         for file in os.listdir('dummy_output'):
@@ -38,9 +42,9 @@ class TestRawData(unittest.TestCase):
             file.close()
 
         expected = [' a \n', ' b \n', ' x \n', ' a \n', ' b \n', ' x \n']
-     
+
         os.remove("dummy_file.txt")
-        
+
         self.assertEqual(data, expected)
         # self.assertTrue(len(os.listdir("dummy_output")), 2)
 
@@ -57,13 +61,11 @@ class TestRawData(unittest.TestCase):
         result = open("dummy_output.txt", 'r').readlines()
 
         expected = [' a \t b <::::> x \n', ' a \t b <::::> x \n']
-     
+
         os.remove("dummy_output.txt")
         os.remove("dummy_file.txt")
-        
-        self.assertEqual(result, expected)
 
-        
+        self.assertEqual(result, expected)
 
     def test_merge_wikifuse_chunks(self):
         os.mkdir("dummy_output")
@@ -81,12 +83,11 @@ class TestRawData(unittest.TestCase):
         result = open("dummy_output.txt", 'r').readlines()
 
         expected = [' a \t b <::::> x \n', ' a \t b <::::> x \n']
-     
-        
+
         self.assertEqual(result, expected)
 
         os.remove("dummy_output.txt")
 
 
 if __name__ == '__main__':
-    unittest.main() 
+    unittest.main()

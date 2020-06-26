@@ -8,13 +8,11 @@ import sys
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
 
-def batch_translate_text(
-    input_uri,
-    output_uri,
-    project_id,
-    src_lang="en",
-    dst_lang =["hi"]
-):
+def batch_translate_text(input_uri,
+                         output_uri,
+                         project_id,
+                         src_lang="en",
+                         dst_lang=["hi"]):
     """Batch translation of a file stored on GCS"""
 
     client = translate.TranslationServiceClient()
@@ -24,7 +22,7 @@ def batch_translate_text(
 
     input_configs_element = {
         "gcs_source": gcs_source,
-        "mime_type": "text/plain"  
+        "mime_type": "text/plain"
     }
 
     gcs_destination = {"output_uri_prefix": output_uri}
@@ -34,7 +32,7 @@ def batch_translate_text(
     operation = client.batch_translate_text(
         parent=parent,
         source_language_code=src_lang,
-        target_language_codes=dst_lang, 
+        target_language_codes=dst_lang,
         input_configs=[input_configs_element],
         output_config=output_config)
 
@@ -52,11 +50,11 @@ def translate_text(line, src_lang, dst_lang, project_id):
 
     client = translate.TranslationServiceClient()
     parent = client.location_path(project_id, "global")
-    
+
     response = client.translate_text(
         parent=parent,
         contents=[line],
-        mime_type="text/plain",  
+        mime_type="text/plain",
         source_language_code=src_lang,
         target_language_code=dst_lang,
     )
@@ -66,37 +64,45 @@ def translate_text(line, src_lang, dst_lang, project_id):
     return translation.translated_text
 
 
-def batch_translate_file(input_path, output_file, gcs_bucket, project_id,
-                        src_lang = "en", dst_lang ="hi",
-                        threshold=20):
-
+def batch_translate_file(input_path,
+                         output_file,
+                         gcs_bucket,
+                         project_id,
+                         src_lang="en",
+                         dst_lang="hi",
+                         threshold=20):
     """
     File is transferred to the GCS,
     gets translated and gets copied back
     """
-    
-    move_cmd = "gsutil -m cp {0} {1}".format(input_path,
-                    gcs_bucket +'/'+ input_path)
-    logging.info(move_cmd)
-    os.system(move_cmd)  
 
-    batch_translate_text(gcs_bucket+ '/' + input_path,
-                        gcs_bucket + '/intermediate/',
-                        project_id)
+    move_cmd = "gsutil -m cp {0} {1}".format(input_path,
+                                             gcs_bucket + '/' + input_path)
+    logging.info(move_cmd)
+    os.system(move_cmd)
+
+    batch_translate_text(gcs_bucket + '/' + input_path,
+                         gcs_bucket + '/intermediate/', project_id)
 
     copy_back_cmd = "gsutil -m cp -r {0} {1}".format(gcs_bucket + '/intermediate/*.' \
                     + input_path.split('.')[1] + '/', output_file)
     logging.info("[EXECUTING] {0}".format(copy_back_cmd))
     os.system(copy_back_cmd)
 
-    remove_intermediate_cmd = "gsutil -m rm -rf {0}".format(gcs_bucket+'/intermediate')
+    remove_intermediate_cmd = "gsutil -m rm -rf {0}".format(gcs_bucket +
+                                                            '/intermediate')
     logging.info("[EXECUTING] {0}".format(remove_intermediate_cmd))
     os.system(remove_intermediate_cmd)
 
     logging.info("[WROTE] {0}".format(output_file))
 
-def translate_data(input_path, output_file, config_file="config.json", 
-                    src_lang = "en", dst_lang ="hi", threshold=20):
+
+def translate_data(input_path,
+                   output_file,
+                   config_file="config.json",
+                   src_lang="en",
+                   dst_lang="hi",
+                   threshold=20):
     """
     translates data in the given input path.
     if the input_path is a directory, its individual files are translated
@@ -110,32 +116,26 @@ def translate_data(input_path, output_file, config_file="config.json",
 
     gcs_bucket = config["GCSBucket"]
     project_id = config["ProjectID"]
-    
+
     if os.path.isdir(input_path):
- 
+
         for file in os.listdir(input_path):
-            batch_translate_file(os.path.join(input_path, file), './outputs/' + file, 
-                                gcs_bucket, project_id,
-                                src_lang, dst_lang, threshold)
-                                
+            batch_translate_file(os.path.join(input_path, file),
+                                 './outputs/' + file, gcs_bucket, project_id,
+                                 src_lang, dst_lang, threshold)
 
     else:
         file = open(input_path, 'r').readlines()
 
         if len(file) > threshold:
-            batch_translate_file(input_path, output_file, gcs_bucket, project_id,
-                            src_lang, dst_lang, threshold)
-                            
-            
+            batch_translate_file(input_path, output_file, gcs_bucket,
+                                 project_id, src_lang, dst_lang, threshold)
+
         else:
             outfile = open(output_file, 'wb')
 
             for line in file:
                 outfile.write(translate_text(line.strip(), src_lang, dst_lang, project_id).encode() \
                                  + '\n'.encode())
-            
+
             outfile.close()
-
-
-
-
