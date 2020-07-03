@@ -19,6 +19,9 @@ class Generator:
         ignore projects specifies the dependency labels that
         will be ignored.
 
+        drop_words_percentage: percentage of words to be dropped.
+        0 - 1, 0 drops none, 1 drops everything
+
         split specifies how the chunks should be distributed 
         over the two sentences.
         permutation and pairs are the two options.
@@ -73,7 +76,7 @@ class Generator:
         drops the specified percentage of words
         from each of the splits
         """
-        
+
         if self.drop_words_perc_ != 0:
             if '<::::>' in chunk:
                 return " {0} <::::> {1} ".format(
