@@ -219,7 +219,7 @@ def train(dataset_file, bert_dir, checkpoint_dir):
     transformer.save_weights('bert_nmt_ckpt')
 
 
-def test(input_file, output_file, bert_dir):
+def test(input_file, output_file, bert_dir, checkpoint):
     global tokenizer_en
 
     vocab_file = 'vocab_en_'
@@ -244,7 +244,7 @@ def test(input_file, output_file, bert_dir):
                                 look_ahead_mask=None,
                                 dec_padding_mask=None)
     
-    new_transformer.load_weights('bert_nmt_ckpt')
+    new_transformer.load_weights(checkpoint)
 
     to_translate = open(input_file).readlines()
     translations = open(output_file, 'wb')
@@ -261,4 +261,4 @@ if __name__ == '__main__':
     if (sys.argv[1] == 'train'):
         train(sys.argv[2], sys.argv[3], sys.argv[4])
     else:
-        test(sys.argv[2], sys.argv[3], sys.argv[4])
+        test(sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5])
