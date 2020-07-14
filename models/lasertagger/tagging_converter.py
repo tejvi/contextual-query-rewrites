@@ -28,7 +28,6 @@ import tagging
 import utils
 
 
-
 class TaggingConverter(object):
     """Converter from training target texts into tagging format."""
     def __init__(self,
@@ -55,9 +54,9 @@ class TaggingConverter(object):
             if len(tokens) > self._max_added_phrase_length:
                 self._max_added_phrase_length = len(tokens)
 
-        self._compute_single_tag = self._compute_single_tag_without_reordering
+        self._compute_tags_fixed_order = self._compute_tags_fixed_order_without_reordering
         if arbitrary_reordering:
-            self._compute_single_tag = self._compute_single_tag_with_reordering
+            self._compute_tags_fixed_order = self._compute_tags_fixed_order_with_reordering
 
     def compute_tags(self, task, target):
         """Computes tags needed for converting the source into the target.
@@ -88,7 +87,8 @@ class TaggingConverter(object):
                 tags[task.first_tokens[1] - 1].tag_type = tagging.TagType.SWAP
         return tags
 
-    def _compute_tags_fixed_order(self, source_tokens, target_tokens):
+    def _compute_tags_fixed_order_without_reordering(self, source_tokens,
+                                                     target_tokens):
         """Computes tags when the order of sources is fixed.
 
     Args:
@@ -107,9 +107,9 @@ class TaggingConverter(object):
             #tags[source_token_idx], target_token_idx = self._compute_single_tag_mod(
             #    source_tokens[source_token_idx], target_token_idx, target_tokens, source_tokens)
             tags[
-                source_token_idx], target_token_idx = self._compute_single_tag(
+                source_token_idx], target_token_idx = self._compute_single_tag_without_reordering(
                     source_tokens[source_token_idx], target_token_idx,
-                    target_tokens, source_tokens)
+                    target_tokens)
             # If we're adding a phrase and the previous source token(s) were deleted,
             # we could add the phrase before a previously deleted token and still get
             # the same realized output. For example:
@@ -148,8 +148,8 @@ class TaggingConverter(object):
         return []
 
     def _compute_single_tag_without_reordering(self, source_token,
-                                               target_token_idx, target_tokens,
-                                               source_tokens):
+                                               target_token_idx,
+                                               target_tokens):
         """Computes a single tag.
 
     The tag may match multiple target tokens (via tag.added_phrase) so we return
@@ -183,33 +183,60 @@ class TaggingConverter(object):
                                    added_phrase), next_target_token_idx + 1
         return tagging.Tag('DELETE'), target_token_idx
 
-    def _compute_single_tag_with_reordering(self, source_token,
+    def _compute_tags_fixed_order_with_reordering(self, source_tokens,
+                                                  target_tokens):
+        tags = []
+
+        source_token_idx, target_token_idx = 0, 0
+
+        while target_token_idx < len(target_tokens):
+            res = self._compute_single_tag_with_reordering(
+                source_token_idx, target_token_idx, target_tokens,
+                source_tokens)
+
+            if res == 0:
+                return []
+
+            else:
+                tags.append(res[0])
+                target_token_idx = res[1]
+                source_token_idx = res[2]
+
+        return tags
+
+    def _compute_single_tag_with_reordering(self, source_token_idx,
                                             target_token_idx, target_tokens,
                                             source_tokens):
         """Computes a single tag.
 
     Max len : 200
     """
-        source_token = source_token.lower()
+        source_token = source_tokens[min(source_token_idx,
+                                         len(source_tokens) - 1)].lower()
+
         while (target_token_idx < len(target_tokens) - 1
                and target_tokens[target_token_idx].lower() == "null"):
             target_token_idx += 1
+            
         target_token = target_tokens[target_token_idx].lower()
 
         if target_token not in source_tokens:
             if target_token in self._phrase_vocabulary:
-                return tagging.Tag("KEEP|" +
-                                   target_token), target_token_idx + 1
+                return tagging.Tag(
+                    "KEEP|" +
+                    target_token), target_token_idx + 1, source_token_idx
             else:
-                return tagging.Tag("KEEP|DISCARD"), target_token_idx + 1
+                return 0
 
         elif source_token in target_tokens:
             idx = target_tokens.index(source_token)
             target_tokens[idx] = "NULL"
-            return tagging.Tag("KEEP|" + str(idx)), target_token_idx
+            return tagging.Tag(
+                "KEEP|" + str(idx)), target_token_idx, source_token_idx + 1
 
         else:
-            return tagging.Tag("DELETE"), target_token_idx
+            return tagging.Tag(
+                "DELETE"), target_token_idx, source_token_idx + 1
 
     def _find_first_deletion_idx(self, source_token_idx, tags):
         """Finds the start index of a span of deleted tokens.
