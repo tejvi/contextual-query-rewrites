@@ -189,7 +189,7 @@ class TaggingConverter(object):
 
         source_token_idx, target_token_idx = 0, 0
 
-        while target_token_idx < len(target_tokens):
+        while target_tokens.count("NULL") != len(target_tokens):
             res = self._compute_single_tag_with_reordering(
                 source_token_idx, target_token_idx, target_tokens,
                 source_tokens)
@@ -217,15 +217,18 @@ class TaggingConverter(object):
         while (target_token_idx < len(target_tokens) - 1
                and target_tokens[target_token_idx].lower() == "null"):
             target_token_idx += 1
-            
+
         target_token = target_tokens[target_token_idx].lower()
 
         if target_token not in source_tokens:
             if target_token in self._phrase_vocabulary:
+                target_tokens[target_token_idx] = "NULL"
                 return tagging.Tag(
                     "KEEP|" +
                     target_token), target_token_idx + 1, source_token_idx
             else:
+                print("generation infeasible: {0}, {1}".format(
+                    target_token, target_tokens))
                 return 0
 
         elif source_token in target_tokens:

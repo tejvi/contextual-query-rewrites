@@ -46,10 +46,9 @@ class BertExample(object):
                task, default_label):
     input_len = len(input_ids)
     if not (input_len == len(input_mask) and input_len == len(segment_ids) and
-            input_len == len(labels) and input_len == len(labels_mask)):
+            len(labels_mask) == len(labels)):
       raise ValueError(
-          'All feature lists should have the same length ({})'.format(
-              input_len))
+          'All feature lists and their masks should have the same length')
 
     self.features = collections.OrderedDict([
         ('input_ids', input_ids),
@@ -70,8 +69,8 @@ class BertExample(object):
       pad_token_id: input_ids feature is padded with this ID, other features
         with ID 0.
     """
-    pad_len = max_seq_length - len(self.features['input_ids'])
     for key in self.features:
+      pad_len = max_seq_length - len(self.features['input_ids'])
       pad_id = pad_token_id if key == 'input_ids' else 0
       self.features[key].extend([pad_id] * pad_len)
       if len(self.features[key]) != max_seq_length:
@@ -209,7 +208,12 @@ class BertExampleBuilder(object):
       token_start_indices.append(len(bert_tokens) + 1)
       pieces = self._tokenizer.tokenize(token)
       bert_tokens.extend(pieces)
-      bert_labels.extend([labels[i]] * len(pieces))
+      #bert_labels.extend([labels[i]] * len(pieces))
+
+    # change 1 to the length of the pieces
+    for token in labels:
+      bert_labels.extend([token] * 1)
+
     return bert_tokens, bert_labels, token_start_indices
 
   def _truncate_list(self, x):

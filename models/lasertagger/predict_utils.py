@@ -63,4 +63,7 @@ class LaserTaggerPredictor(object):
     labels = [
         self._id_2_tag[label_id] for label_id in example.get_token_labels()
     ]
-    return example.editing_task.realize_output(labels)
+
+    # changing return statement to output the tags directly
+    return [str(label) for label in labels]
+    # return example.editing_task.realize_output(labels)
