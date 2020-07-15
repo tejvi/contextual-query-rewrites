@@ -1,42 +1,35 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
+import os
+import sys
+import time
+
+import numpy as np
+
+import tensorflow as tf
+import tensorflow_datasets as tfds
+
 from nmt.bert_tokenization import *
 from nmt.transformer import *
 from nmt.translate import *
 
-import tensorflow as tf
-import tensorflow_hub as hub
-import tensorflow_datasets as tfds
 
-import time
-import numpy as np
-import matplotlib.pyplot as plt
-import collections
-import unicodedata
-
-import os
-import sys
-from bert import BertModelLayer
-from bert.loader import StockBertConfig, load_stock_weights
-from bert.loader import map_to_stock_variable_name
 
 MAX_SEQ_LENGTH = 128
 BUFFER_SIZE = 50000
 BATCH_SIZE = 32
-
-tokenizer_ind = FullTokenizer(
-    vocab_file='multi_cased_L-12_H-768_A-12/vocab.txt', do_lower_case=True)
+EPOCHS = 10
 
 
 def get_sentences(filename):
+    """
+    Returns the relevant sentences from
+    the given file.
+    """
     data = open(filename).readlines()
 
     sents = []
-
-    i = 0
     for line in data:
-        i += 1
-
         splits = line.split('\t')
         sents.append([splits[3], splits[4]])
 
@@ -75,6 +68,9 @@ def encode(ind, en, seq_length=MAX_SEQ_LENGTH):
     if len(lang2) < seq_length:
         lang2 = lang2 + list(np.zeros(seq_length - len(lang2), 'int32'))
 
+    if target == "en":
+        return lang2, lang1
+
     return lang1, lang2
 
 
@@ -82,7 +78,9 @@ def filter_max_length(x, y, max_length=MAX_SEQ_LENGTH):
     return tf.logical_and(tf.size(x) <= max_length, tf.size(y) <= max_length)
 
 
-def train(dataset_file, bert_dir, checkpoint_dir):
+def train(targ_lang, bert_dir, checkpoint_dir, dataset_file):
+    global target
+    target = targ_lang
 
     sentences = get_sentences(dataset_file)
 
@@ -91,8 +89,12 @@ def train(dataset_file, bert_dir, checkpoint_dir):
     train_examples = datasets.take(273885 // 10 * 9)
     validation_examples = datasets.skip(273885 // 10 * 9)
 
+    global tokenizer_ind
+    tokenizer_ind = FullTokenizer(vocab_file=os.path.join(bert_dir, "vocab.txt"),
+                                  do_lower_case=True)
+
     global tokenizer_en
-    vocab_file = 'vocab_en_'
+    vocab_file = 'vocab_{0}_'.format(src_lang)
     if os.path.isfile(vocab_file + '.subwords'):
         tokenizer_en = tfds.features.text.SubwordTextEncoder.load_from_file(
             vocab_file)
@@ -100,10 +102,10 @@ def train(dataset_file, bert_dir, checkpoint_dir):
         tokenizer_en = tfds.features.text.SubwordTextEncoder.build_from_corpus(
             (en.numpy() for en, ind in train_examples),
             target_vocab_size=2**13)
-    tokenizer_en.save_to_file('vocab_en_')
+    tokenizer_en.save_to_file('vocab_{0}_'.format(src_lang))
 
     train_dataset = train_examples.map(lambda sent: tf.py_function(
-        encode, [sent[1], sent[0]], [tf.int32, tf.int32]))
+        encode, [sent[0], sent[1]], [tf.int32, tf.int32]))
     train_dataset = train_dataset.filter(filter_max_length)
 
     train_dataset = train_dataset.cache()
@@ -112,36 +114,13 @@ def train(dataset_file, bert_dir, checkpoint_dir):
     train_dataset = train_dataset.prefetch(tf.data.experimental.AUTOTUNE)
 
     val_dataset = validation_examples.map(lambda sent: tf.py_function(
-        encode, [sent[1], sent[0]], [tf.int32, tf.int32]))
+        encode, [sent[0], sent[1]], [tf.int32, tf.int32]))
     val_dataset = val_dataset.filter(filter_max_length)
     val_dataset = val_dataset.padded_batch(BATCH_SIZE,
                                            padded_shapes=([-1], [-1]))
 
-    temp_mha = MultiHeadAttention(d_model=512, num_heads=8)
-    y = tf.random.uniform((1, 60, 768))
-    q = tf.random.uniform((1, 60, 512))
-    out, attn = temp_mha(y, k=y, q=q, mask=None)
-
-    sample_decoder_layer = DecoderLayer(512, 8, 2048)
-    sample_encoder_output = tf.random.uniform((64, 128, 768))
-
-    sample_decoder_layer_output, _, _ = sample_decoder_layer(
-        tf.random.uniform((64, 50, 512)), sample_encoder_output, False, None,
-        None)
-
-    sample_decoder = Decoder(num_layers=2,
-                             d_model=512,
-                             num_heads=8,
-                             dff=2048,
-                             target_vocab_size=8000)
-
-    output, attn = sample_decoder(tf.random.uniform((64, 26)),
-                                  enc_output=sample_encoder_output,
-                                  training=False,
-                                  look_ahead_mask=None,
-                                  padding_mask=None)
-
     target_vocab_size = tokenizer_en.vocab_size + 2
+
     config = Config(num_layers=6, d_model=256, dff=1024, num_heads=8)
 
     bert_config_file = os.path.join(bert_dir, "bert_config.json")
@@ -153,11 +132,6 @@ def train(dataset_file, bert_dir, checkpoint_dir):
 
     inp = tf.random.uniform((BATCH_SIZE, MAX_SEQ_LENGTH))
     tar_inp = tf.random.uniform((BATCH_SIZE, MAX_SEQ_LENGTH))
-    fn_out, _ = transformer(inp,
-                            tar_inp,
-                            True,
-                            look_ahead_mask=None,
-                            dec_padding_mask=None)
 
     # init bert pre-trained weights
     transformer.restore_encoder(bert_ckpt_file)
@@ -171,7 +145,6 @@ def train(dataset_file, bert_dir, checkpoint_dir):
                                          beta_2=0.98,
                                          epsilon=1e-9)
 
-    temp_learning_rate_schedule = CustomSchedule(config.d_model)
 
     train_loss = tf.keras.metrics.Mean(name='train_loss')
     train_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(
@@ -187,8 +160,6 @@ def train(dataset_file, bert_dir, checkpoint_dir):
     if ckpt_manager.latest_checkpoint:
         ckpt.restore(ckpt_manager.latest_checkpoint)
         print('Latest checkpoint restored!!')
-
-    EPOCHS = 10
 
     for epoch in range(EPOCHS):
         start = time.time()
@@ -216,13 +187,15 @@ def train(dataset_file, bert_dir, checkpoint_dir):
 
         print('Time taken for 1 epoch: {} secs\n'.format(time.time() - start))
 
-    transformer.save_weights('bert_nmt_ckpt')
+    transformer.save_weights('bert_nmt_ckpt_{0}'.format(targ_lang))
 
 
-def test(input_file, output_file, bert_dir, checkpoint):
+def test(targ_lang, bert_dir, checkpoint, input_file, output_file):
     global tokenizer_en
-
     vocab_file = 'vocab_en_'
+
+    tokenizer_ind = FullTokenizer(vocab_file=os.path.join(bert_dir, "vocab.txt"),
+                                  do_lower_case=True)
 
     tokenizer_en = tfds.features.text.SubwordTextEncoder.load_from_file(
         vocab_file)
@@ -237,13 +210,13 @@ def test(input_file, output_file, bert_dir, checkpoint):
 
     inp = tf.random.uniform((BATCH_SIZE, MAX_SEQ_LENGTH))
     tar_inp = tf.random.uniform((BATCH_SIZE, MAX_SEQ_LENGTH))
-    
+
     fn_out, _ = new_transformer(inp,
                                 tar_inp,
                                 True,
                                 look_ahead_mask=None,
                                 dec_padding_mask=None)
-    
+
     new_transformer.load_weights(checkpoint)
 
     to_translate = open(input_file).readlines()
@@ -259,6 +232,6 @@ def test(input_file, output_file, bert_dir, checkpoint):
 
 if __name__ == '__main__':
     if (sys.argv[1] == 'train'):
-        train(sys.argv[2], sys.argv[3], sys.argv[4])
+        train(sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5])
     else:
-        test(sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5])
+        test(sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6])
