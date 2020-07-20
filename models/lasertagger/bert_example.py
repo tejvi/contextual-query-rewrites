@@ -127,7 +127,7 @@ class BertExampleBuilder(object):
         self._pad_id = self._get_pad_id()
         self._keep_tag_id = self._label_map['KEEP']
         self._arbitrary_reordering = arbitrary_reordering
-        self._extra_tokens = 10
+        self._extra_tokens = extra_tokens
 
     def build_bert_example(
             self,
@@ -148,7 +148,8 @@ class BertExampleBuilder(object):
       and use_arbitrary_target_ids_for_infeasible_examples == False.
     """
         # Compute target labels.
-        task = tagging.EditingTask(sources)
+        task = tagging.EditingTask(sources, self._arbitrary_reordering,
+                                   self._extra_tokens)
         if target is not None:
             tags = self._converter.compute_tags(task, target)
             if not tags:
