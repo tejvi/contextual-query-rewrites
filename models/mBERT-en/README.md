@@ -24,10 +24,14 @@ Any other word would mean conversion from english.
 
 ### Training
 ```
-python3 bert_nmt.py train <target_lang> <dataset_file> <bert_dir> <checkpoint_dir>
+python3 bert_nmt.py train <target_lang> <bert_dir> <checkpoint_dir> <dataset_file> 
 ```
+
 When the training loop runs for the specified number of epochs, checkpoint file ```bert_nmt_ckpt_<targ_lang>.index``` will be created. Use this as the checkpoint file for testing.
 ### Testing
 ```
-python3 bert_nmt.py test <target_lang> <input_file> <output_file> <bert_dir> <checkpoint>
+python3 bert_nmt.py test <target_lang> <bert_dir> <checkpoint> <input_file> <output_file>
 ```
+
+#### Note: 
+To use a different dataset, change the get_sentences functions in ```bert_nmt.py```.
