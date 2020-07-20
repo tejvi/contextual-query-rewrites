@@ -54,8 +54,10 @@ class TaggingConverter(object):
             if len(tokens) > self._max_added_phrase_length:
                 self._max_added_phrase_length = len(tokens)
 
+        self._arbitrary_reordering = arbitrary_reordering
+
         self._compute_tags_fixed_order = self._compute_tags_fixed_order_without_reordering
-        if arbitrary_reordering:
+        if self._arbitrary_reordering:
             self._compute_tags_fixed_order = self._compute_tags_fixed_order_with_reordering
 
     def compute_tags(self, task, target):
@@ -74,7 +76,8 @@ class TaggingConverter(object):
                                               target_tokens)
         # If conversion fails, try to obtain the target after swapping the source
         # order.
-        if not tags and len(task.sources) == 2 and self._do_swap:
+        if not self._arbitrary_reordering and not tags and len(
+                task.sources) == 2 and self._do_swap:
             swapped_task = tagging.EditingTask(task.sources[::-1])
             tags = self._compute_tags_fixed_order(swapped_task.source_tokens,
                                                   target_tokens)
@@ -189,7 +192,10 @@ class TaggingConverter(object):
 
         source_token_idx, target_token_idx = 0, 0
 
-        while target_token_idx < len(target_tokens):
+        source_tokens = [src_token.lower() for src_token in source_tokens]
+
+        while target_tokens.count("<NULL>") != len(
+                target_tokens) and source_token_idx <= len(source_tokens):
             res = self._compute_single_tag_with_reordering(
                 source_token_idx, target_token_idx, target_tokens,
                 source_tokens)
@@ -201,6 +207,9 @@ class TaggingConverter(object):
                 tags.append(res[0])
                 target_token_idx = res[1]
                 source_token_idx = res[2]
+
+        if target_tokens.count("<NULL>") != len(target_tokens):
+            return []
 
         return tags
 
@@ -215,13 +224,14 @@ class TaggingConverter(object):
                                          len(source_tokens) - 1)].lower()
 
         while (target_token_idx < len(target_tokens) - 1
-               and target_tokens[target_token_idx].lower() == "null"):
+               and target_tokens[target_token_idx] == "<NULL>"):
             target_token_idx += 1
-            
+
         target_token = target_tokens[target_token_idx].lower()
 
-        if target_token not in source_tokens:
+        if target_token not in source_tokens[source_token_idx:]:
             if target_token in self._phrase_vocabulary:
+                target_tokens[target_token_idx] = "<NULL>"
                 return tagging.Tag(
                     "KEEP|" +
                     target_token), target_token_idx + 1, source_token_idx
@@ -230,7 +240,7 @@ class TaggingConverter(object):
 
         elif source_token in target_tokens:
             idx = target_tokens.index(source_token)
-            target_tokens[idx] = "NULL"
+            target_tokens[idx] = "<NULL>"
             return tagging.Tag(
                 "KEEP|" + str(idx)), target_token_idx, source_token_idx + 1
 
