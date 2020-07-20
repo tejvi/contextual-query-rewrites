@@ -30,11 +30,11 @@ from absl import app
 from absl import flags
 from absl import logging
 
+import tensorflow as tf
+
 import bert_example
 import tagging_converter
 import utils
-
-import tensorflow as tf
 
 FLAGS = flags.FLAGS
 
@@ -42,9 +42,8 @@ flags.DEFINE_string(
     'input_file', None,
     'Path to the input file containing examples to be converted to '
     'tf.Examples.')
-flags.DEFINE_enum(
-    'input_format', None, ['wikisplit', 'discofuse', 'wikifuse'],
-    'Format which indicates how to parse the input_file.')
+flags.DEFINE_enum('input_format', None, ['wikisplit', 'discofuse', 'wikifuse'],
+                  'Format which indicates how to parse the input_file.')
 flags.DEFINE_string('output_tfrecord', None,
                     'Path to the resulting TFRecord file.')
 flags.DEFINE_string(
@@ -67,10 +66,17 @@ flags.DEFINE_bool(
     'target ids will correspond to the tag sequence KEEP-DELETE-KEEP-DELETE... '
     'which should be very unlikely to be predicted by chance. This will be '
     'useful for getting more accurate eval scores during training.')
+flags.DEFINE_bool(
+    'arbitrary_reordering', False,
+    'Set this to True when arbitrary reordering of source tokens should be allowed'
+)
+flags.DEFINE_integer(
+    'extra_tags_length', 10,
+    'Number of extra tags to pad the source tokens array with')
 
 
 def _write_example_count(count: int) -> Text:
-  """Saves the number of converted examples to a file.
+    """Saves the number of converted examples to a file.
 
   This count is used when determining the number of training steps.
 
@@ -80,48 +86,51 @@ def _write_example_count(count: int) -> Text:
   Returns:
     The filename to which the count is saved.
   """
-  count_fname = FLAGS.output_tfrecord + '.num_examples.txt'
-  with tf.io.gfile.GFile(count_fname, 'w') as count_writer:
-    count_writer.write(str(count))
-  return count_fname
+    count_fname = FLAGS.output_tfrecord + '.num_examples.txt'
+    with tf.io.gfile.GFile(count_fname, 'w') as count_writer:
+        count_writer.write(str(count))
+    return count_fname
 
 
 def main(argv):
-  if len(argv) > 1:
-    raise app.UsageError('Too many command-line arguments.')
-  flags.mark_flag_as_required('input_file')
-  flags.mark_flag_as_required('input_format')
-  flags.mark_flag_as_required('output_tfrecord')
-  flags.mark_flag_as_required('label_map_file')
-  flags.mark_flag_as_required('vocab_file')
+    if len(argv) > 1:
+        raise app.UsageError('Too many command-line arguments.')
+    flags.mark_flag_as_required('input_file')
+    flags.mark_flag_as_required('input_format')
+    flags.mark_flag_as_required('output_tfrecord')
+    flags.mark_flag_as_required('label_map_file')
+    flags.mark_flag_as_required('vocab_file')
 
-  label_map = utils.read_label_map(FLAGS.label_map_file)
-  converter = tagging_converter.TaggingConverter(
-      tagging_converter.get_phrase_vocabulary_from_label_map(label_map),
-      FLAGS.enable_swap_tag)
-  builder = bert_example.BertExampleBuilder(label_map, FLAGS.vocab_file,
-                                            FLAGS.max_seq_length,
-                                            FLAGS.do_lower_case, converter)
+    label_map = utils.read_label_map(FLAGS.label_map_file)
+    converter = tagging_converter.TaggingConverter(
+        tagging_converter.get_phrase_vocabulary_from_label_map(label_map),
+        FLAGS.enable_swap_tag)
+    builder = bert_example.BertExampleBuilder(label_map, FLAGS.vocab_file,
+                                              FLAGS.max_seq_length,
+                                              FLAGS.do_lower_case, converter,
+                                              FLAGS.arbitrary_reordering,
+                                              FLAGS.extra_tags_length)
 
-  num_converted = 0
-  with tf.io.TFRecordWriter(FLAGS.output_tfrecord) as writer:
-    for i, (sources, target) in enumerate(utils.yield_sources_and_targets(
-        FLAGS.input_file, FLAGS.input_format)):
-      logging.log_every_n(
-          logging.INFO,
-          f'{i} examples processed, {num_converted} converted to tf.Example.',
-          10000)
-      example = builder.build_bert_example(
-          sources, target,
-          FLAGS.output_arbitrary_targets_for_infeasible_examples)
-      if example is None:
-        continue
-      writer.write(example.to_tf_example().SerializeToString())
-      num_converted += 1
-  logging.info(f'Done. {num_converted} examples converted to tf.Example.')
-  count_fname = _write_example_count(num_converted)
-  logging.info(f'Wrote:\n{FLAGS.output_tfrecord}\n{count_fname}')
+    num_converted = 0
+    with tf.io.TFRecordWriter(FLAGS.output_tfrecord) as writer:
+        for i, (sources, target) in enumerate(
+                utils.yield_sources_and_targets(FLAGS.input_file,
+                                                FLAGS.input_format)):
+            logging.log_every_n(
+                logging.INFO,
+                f'{i} examples processed, {num_converted} converted to tf.Example.',
+                10000)
+            example = builder.build_bert_example(
+                sources, target,
+                FLAGS.output_arbitrary_targets_for_infeasible_examples)
+            if example is None:
+                continue
+            writer.write(example.to_tf_example().SerializeToString())
+            num_converted += 1
+    logging.info(f'Done. {num_converted} examples converted to tf.Example.')
+    count_fname = _write_example_count(num_converted)
+    logging.info(f'Wrote:\n{FLAGS.output_tfrecord}\n{count_fname}')
 
 
 if __name__ == '__main__':
-  app.run(main)
+    app.run(main)
