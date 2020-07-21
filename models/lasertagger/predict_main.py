@@ -55,7 +55,7 @@ flags.DEFINE_bool(
     'models and False for cased models.')
 flags.DEFINE_bool('enable_swap_tag', True, 'Whether to enable the SWAP tag.')
 flags.DEFINE_string('saved_model', None, 'Path to an exported TF model.')
-flags.DEFINE_bool('arbitrary_reordering', True,
+flags.DEFINE_bool('arbitrary_reordering', False,
                   'Whether to allow arbitrary reordering.')
 flags.DEFINE_integer(
     'extra_tags_length', 10,
