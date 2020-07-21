@@ -1,5 +1,6 @@
 import sys
 import logging
+import random
 from itertools import permutations
 import conllu
 
@@ -12,10 +13,14 @@ class Generator:
                  input_file,
                  output_file,
                  ignore_projections=None,
-                 split="permutation"):
+                 split="permutation",
+                 drop_words_percentage=0):
         """
         ignore projects specifies the dependency labels that
         will be ignored.
+
+        drop_words_percentage: percentage of words to be dropped.
+        0 - 1, 0 drops none, 1 drops everything
 
         split specifies how the chunks should be distributed 
         over the two sentences.
@@ -33,6 +38,8 @@ class Generator:
 
         self.ignore_projections_ = ignore_projections
 
+        self.drop_words_perc_ = drop_words_percentage
+
         self.split_ = self.get_permutations
         if split == "pairs":
             self.split_ = self.get_pairs
@@ -45,7 +52,8 @@ class Generator:
         chunks.append('<::::>')
 
         for instance in permutations(chunks):
-            permutations_list.append(" ".join(instance).strip())
+            permutations_list.append(
+                self.drop_words(" ".join(instance).strip()))
 
         return permutations_list
 
@@ -57,10 +65,37 @@ class Generator:
 
         for i in range(len(chunks)):
             for j in range(i + 1, len(chunks)):
-                pairs.append(" {0} <::::> {1} ".format(chunks[i].strip(),
-                                                       chunks[j].strip()))
+                pairs.append(" {0} <::::> {1} ".format(
+                    self.drop_words(chunks[i].strip()),
+                    self.drop_words(chunks[j].strip())))
 
         return pairs
+
+    def drop_words(self, chunk):
+        """
+        drops the specified percentage of words
+        from each of the splits
+        """
+
+        if self.drop_words_perc_ != 0:
+            if '<::::>' in chunk:
+                return " {0} <::::> {1} ".format(
+                    self.drop_words(chunk.split('<::::>')[0]),
+                    self.drop_words(chunk.split('<::::>')[1]))
+
+            chunks = chunk.split()
+            drop_indexes = set(
+                random.sample(range(0, len(chunks)),
+                              int(len(chunks) * self.drop_words_perc_)))
+            keep_words = []
+
+            for i, word in enumerate(chunks):
+                if i not in drop_indexes:
+                    keep_words.append(word)
+
+            return " ".join(keep_words)
+
+        return chunk
 
     def to_string_rec(self, tokens_to_add, token_list):
         """
@@ -120,6 +155,7 @@ class Generator:
             logging.info("[WROTE] : {0}th sentence ".format(i))
             i += 1
         output_file.close()
+
 
 if __name__ == '__main__':
     Generator(sys.argv[1], sys.argv[2]).generate()
