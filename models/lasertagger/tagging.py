@@ -224,9 +224,14 @@ class EditingTask(object):
             else:
                 last_token = len(self.source_tokens)
             # Realize the source and fix casing.
-            realized_source = self._realize_sequence(
-                self.source_tokens[first_token:last_token],
-                tags[first_token:last_token])
+            if not self._arbitrary_reordering:
+                realized_source = self._realize_sequence(
+                    self.source_tokens[first_token:last_token],
+                    tags[first_token:last_token])
+            else:
+                realized_source = self._realize_sequence(
+                    self.source_tokens, tags
+                    )
             if outputs:
                 if outputs[0][-1:] in '.!?':
                     realized_source = self._first_char_to_upper(
