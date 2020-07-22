@@ -188,7 +188,19 @@ class TaggingConverter(object):
 
     def _compute_tags_fixed_order_with_reordering(self, source_tokens,
                                                   target_tokens):
+        """
+            Computes tags for a given list of source tokens 
+            and target tokens when arbitrary reordering is allowed.
+
+            Source tokens list and the final tags returned 
+            may no longer have the same number of elements
+            since there is no longer a KEEP+ or DELETE+ 
+            tag, and all additions are done by a separate 
+            KEEP|<phrase> tag that is not associated with 
+            any of the source tokens
+        """
         tags = []
+        to_add_list = []
 
         source_token_idx, target_token_idx = 0, 0
 
@@ -204,13 +216,21 @@ class TaggingConverter(object):
                 return []
 
             else:
-                tags.append(res[0])
+                if res[3] == -1:
+                    tags.append(res[0])
+                else:
+                    to_add_list.append([res[0], res[3]])
+
                 target_token_idx = res[1]
                 source_token_idx = res[2]
 
         if target_tokens.count("<NULL>") != len(target_tokens):
             return []
 
+        to_add_list = sorted(to_add_list, key=lambda x: x[1])
+        
+        for tag, position in to_add_list:
+            tags.insert(position, tag)
         return tags
 
     def _compute_single_tag_with_reordering(self, source_token_idx,
@@ -218,7 +238,17 @@ class TaggingConverter(object):
                                             source_tokens):
         """Computes a single tag.
 
-    Max len : 200
+    The predicted tags can be:
+    - KEEP|<position> 
+    where position is the position at which the source token
+    occurs in the target string.
+    - KEEP|<phrase_to_add> 
+    phrase_to_add is the phrase that is being added from the 
+    edit vocabulary
+    - DELETE
+    source token does not occur in the target 
+    and hence is tagged as delete
+
     """
         source_token = source_tokens[min(source_token_idx,
                                          len(source_tokens) - 1)].lower()
@@ -234,7 +264,7 @@ class TaggingConverter(object):
                 target_tokens[target_token_idx] = "<NULL>"
                 return tagging.Tag(
                     "KEEP|" +
-                    target_token), target_token_idx + 1, source_token_idx
+                    target_token), target_token_idx + 1, source_token_idx, target_token_idx
             else:
                 return 0
 
@@ -242,11 +272,11 @@ class TaggingConverter(object):
             idx = target_tokens.index(source_token)
             target_tokens[idx] = "<NULL>"
             return tagging.Tag(
-                "KEEP|" + str(idx)), target_token_idx, source_token_idx + 1
+                "KEEP|" + str(idx)), target_token_idx, source_token_idx + 1, -1
 
         else:
             return tagging.Tag(
-                "DELETE"), target_token_idx, source_token_idx + 1
+                "DELETE"), target_token_idx, source_token_idx + 1, -1
 
     def _find_first_deletion_idx(self, source_token_idx, tags):
         """Finds the start index of a span of deleted tokens.
