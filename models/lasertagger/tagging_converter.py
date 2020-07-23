@@ -39,6 +39,7 @@ class TaggingConverter(object):
     Args:
       phrase_vocabulary: Iterable of phrase vocabulary items (strings).
       do_swap: Whether to enable the SWAP tag.
+      arbitrary_reordering: Whether to use arbitrary reordering
     """
         self._phrase_vocabulary = set(phrase.lower()
                                       for phrase in phrase_vocabulary)
@@ -189,6 +190,10 @@ class TaggingConverter(object):
     def _compute_tags_fixed_order_with_reordering(self, source_tokens,
                                                   target_tokens):
         """
+            args:
+                source_tokens - list of source tokens
+                target_tokens - list of target tokens
+
             Computes tags for a given list of source tokens 
             and target tokens when arbitrary reordering is allowed.
 
@@ -199,7 +204,9 @@ class TaggingConverter(object):
             KEEP|<phrase> tag that is not associated with 
             any of the source tokens
         """
+        # tags
         tags = []
+        # extra addition from phrase vocab tags
         to_add_list = []
 
         source_token_idx, target_token_idx = 0, 0
@@ -212,13 +219,18 @@ class TaggingConverter(object):
                 source_token_idx, target_token_idx, target_tokens,
                 source_tokens)
 
+            # generation is infeasible
             if res == 0:
                 return []
 
+
             else:
+                # if the tag is associated with a source token 
+                # and not a position
                 if res[3] == -1:
                     tags.append(res[0])
                 else:
+                    # associated with a position
                     to_add_list.append([res[0], res[3]])
 
                 target_token_idx = res[1]
@@ -229,14 +241,33 @@ class TaggingConverter(object):
 
         to_add_list = sorted(to_add_list, key=lambda x: x[1])
         
+        # add the positional addition tags to the final tags list
         for tag, position in to_add_list:
             tags.insert(position, tag)
+
         return tags
 
     def _compute_single_tag_with_reordering(self, source_token_idx,
                                             target_token_idx, target_tokens,
                                             source_tokens):
         """Computes a single tag.
+
+    args:
+        source_token_idx: the current index of the source token
+                            in the source tokens list
+        target_token_idx: the current index of the target token
+                            in the target token list
+        target tokens: list of target tokens
+        source_tokens: list of source_tokens
+
+    returns: 
+     Tag : the tag computed
+     target token idx : updates and returns target token index
+     source token idx : updates and returns source token index
+     position to add at : a positive integer only in the case of
+                    addition of phrases, -1 otherwise.
+            This is necessary to ensure the correct position of 
+            this tag in the final tags list
 
     The predicted tags can be:
     - KEEP|<position> 
@@ -253,12 +284,16 @@ class TaggingConverter(object):
         source_token = source_tokens[min(source_token_idx,
                                          len(source_tokens) - 1)].lower()
 
+        # skip any null tokens
         while (target_token_idx < len(target_tokens) - 1
                and target_tokens[target_token_idx] == "<NULL>"):
             target_token_idx += 1
 
         target_token = target_tokens[target_token_idx].lower()
 
+        # if a target token doesnt exist in the source tokens
+        # it is either a part of the edit vocabulary
+        # in case it isnt, the generation is infeasible
         if target_token not in source_tokens[source_token_idx:]:
             if target_token in self._phrase_vocabulary:
                 target_tokens[target_token_idx] = "<NULL>"
@@ -268,6 +303,9 @@ class TaggingConverter(object):
             else:
                 return 0
 
+        # if source token is in target tokens 
+        # return KEEP with the position at which it occurs
+        # otherwise tag it as a delete
         elif source_token in target_tokens:
             idx = target_tokens.index(source_token)
             target_tokens[idx] = "<NULL>"

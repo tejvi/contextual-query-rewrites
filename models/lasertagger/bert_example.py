@@ -171,7 +171,7 @@ class BertExampleBuilder(object):
         if self._arbitrary_reordering:
             source_tokens = source_tokens + self._extra_tokens * [" . "]
             tags = tags + (len(source_tokens) -
-                           len(tags)) * [tagging.Tag("KEEP|EOS")]
+                           len(tags)) * [tagging.Tag("KEEP|<EOS>")]
 
         labels = [self._label_map[str(tag)] for tag in tags]
 

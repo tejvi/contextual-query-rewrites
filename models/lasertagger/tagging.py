@@ -97,6 +97,8 @@ class EditingTask(object):
       sources: A list of source strings. Typically contains only one string but
         for sentence fusion it contains two strings to be fused (whose order may
         be swapped).
+      arbitrary_reordering: whether arbitrary reordering is used
+      extra_tags: the number of extra tags used to pad the source tokens
     """
         self.sources = sources
         source_token_lists = [
@@ -153,24 +155,35 @@ class EditingTask(object):
       The realized text.
     """
         src_idx = 0
+
+        # an empty list of strings
+        # necessary because the model might predict a number of keeps
+        # with the same position, in which case the relative order 
+        # in which hey occur as source tokens must be preserved
         outputs = [] + 100 * [""]
+
+        tags = [str(tag) for tag in tags]
 
         for targ_idx, tag in enumerate(tags):
             if src_idx >= len(tokens):
                 break
 
-            if tag == "KEEP|<EOS>":
+            # ignore any keep|eos tags, to avoid abrupt ending of sentences
+            if tag == "KEEP|<EOS>" or tag == "KEEP|EOS":
                 continue
             
             source_token = tokens[src_idx]
             pos = self._get_pos(tag)
 
+            # if a KEEP|position tag, append to the string at that index
             if pos != -1:
                 outputs[pos] += "{0} ".format(source_token)
 
+            # addition of a new phrase
             elif tag.startswith('KEEP|'):
                 outputs[targ_idx] += "{0} ".format(tag.split('|')[1])
 
+            # ignore the source token in case of delete
             if tag == "DELETE" or pos != -1:
                 src_idx += 1
 
@@ -203,7 +216,7 @@ class EditingTask(object):
       ValueError: If the number of tags doesn't match the number of source
         tokens.
     """
-        if self._arbitrary_reordering or len(tags) != len(self.source_tokens):
+        if not self._arbitrary_reordering and len(tags) != len(self.source_tokens):
             raise ValueError(
                 'The number of tags ({}) should match the number of '
                 'source tokens ({})'.format(len(tags),
