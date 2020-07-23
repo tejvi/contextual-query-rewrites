@@ -2,6 +2,10 @@ Source of lasertagger code: [https://github.com/google-research/lasertagger](htt
 
 Source of BERT code: [https://github.com/google-research/bert](https://github.com/google-research/bert)
 
+### The code here is a modified version of the source code.
+
+To use LaserTagger with arbitrary word reordering, follow the modified execution instructions in the following sections.
+
 # LaserTagger
 
 LaserTagger is a text-editing model which predicts a sequence of token-level
@@ -73,6 +77,9 @@ python phrase_vocabulary_optimization.py \
   --output_file=${OUTPUT_DIR}/label_map.txt
 ```
 
+Note: to use arbitrary word reordering, add ```--max_aribitrary_reordering_positions=<max_pos_numbers>``` where max_pos_numbers is the maximum number of words you expect to have in your rewritten sentence.
+
+
 Note that you can also set `max_input_examples` to a smaller value to get a
 reasonable vocabulary, but then you should sort the dataset rows in the case of
 WikiSplit. The rows are in an alphabetical order so taking first *k* of them
@@ -104,6 +111,9 @@ python preprocess_main.py \
     --vocab_file=${BERT_BASE_DIR}/vocab.txt \
     --output_arbitrary_targets_for_infeasible_examples=false
 ```
+
+Note: To use arbitrary word reordering, add ```--arbitrary_reordering=true``` and use ```--extra_tags_length=<num>``` to set the number of extra tags, which is 10 by default.
+
 
 ### 3. Model Training
 
@@ -180,6 +190,9 @@ python predict_main.py \
   --vocab_file=${BERT_BASE_DIR}/vocab.txt \
   --saved_model=${SAVED_MODEL_DIR}
 ```
+
+Note: To use arbitrary word reordering, add ```--arbitrary_reordering=true``` and use ```--extra_tags_length=<num>``` to set the number of extra tags, which is 10 by default.
+
 
 Note that the above will run inference with batch size of 1 so it's not optimal
 in terms of inference time.

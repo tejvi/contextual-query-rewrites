@@ -68,7 +68,11 @@ flags.DEFINE_integer(
     'Number of extra phrases that are not included in the vocabulary but for '
     'which we compute the coverage numbers. These numbers help determining '
     'whether the vocabulary size should have been larger.')
-
+flag.DEFINE_integer(
+    'max_aribitrary_reordering_positions', 0,
+    'Maximum number of positions in a target sentence '
+    'Used to generate the vocabulary to predict the position of a tag '
+    'arbitrary reordering is not enabled if this is 0, the default value.')
 
 def _compute_lcs(source, target):
   """Computes the Longest Common Subsequence (LCS).
@@ -278,6 +282,15 @@ def main(argv):
         # Write statistics.
         coverage = 100.0 * _count_covered_examples(matrix, i + 1) / num_examples
         stats_writer.write(f'{i+1}\t{count}\t{coverage:.2f}\t{phrase}\n')
+    
+    if FLAGS.max_aribitrary_reordering_positions != 0:
+      for i in range(FLAGS.max_aribitrary_reordering_positions):
+        writer.write(f'KEEP|{i}\n')
+        writer.write(f'DELETE|{i}\n')
+      
+      writer.write('KEEP|<EOS>\n')
+      writer.write('DELETE|<EOS>\n')
+      
   logging.info(f'Wrote tags to: {FLAGS.output_file}')
   logging.info(f'Wrote coverage numbers to: {statistics_file}')
 

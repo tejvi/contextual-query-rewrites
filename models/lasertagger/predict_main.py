@@ -37,9 +37,8 @@ flags.DEFINE_string(
     'input_file', None,
     'Path to the input file containing examples for which to compute '
     'predictions.')
-flags.DEFINE_enum(
-    'input_format', None, ['wikisplit', 'discofuse', 'wikifuse'],
-    'Format which indicates how to parse the input_file.')
+flags.DEFINE_enum('input_format', None, ['wikisplit', 'discofuse', 'wikifuse'],
+                  'Format which indicates how to parse the input_file.')
 flags.DEFINE_string(
     'output_file', None,
     'Path to the TSV file where the predictions are written to.')
@@ -56,42 +55,50 @@ flags.DEFINE_bool(
     'models and False for cased models.')
 flags.DEFINE_bool('enable_swap_tag', True, 'Whether to enable the SWAP tag.')
 flags.DEFINE_string('saved_model', None, 'Path to an exported TF model.')
+flags.DEFINE_bool('arbitrary_reordering', False,
+                  'Whether to allow arbitrary reordering.')
+flags.DEFINE_integer(
+    'extra_tags_length', 10,
+    'Number of extra tags to pad the source tokens array with')
 
 
 def main(argv):
-  if len(argv) > 1:
-    raise app.UsageError('Too many command-line arguments.')
-  flags.mark_flag_as_required('input_file')
-  flags.mark_flag_as_required('input_format')
-  flags.mark_flag_as_required('output_file')
-  flags.mark_flag_as_required('label_map_file')
-  flags.mark_flag_as_required('vocab_file')
-  flags.mark_flag_as_required('saved_model')
+    if len(argv) > 1:
+        raise app.UsageError('Too many command-line arguments.')
+    flags.mark_flag_as_required('input_file')
+    flags.mark_flag_as_required('input_format')
+    flags.mark_flag_as_required('output_file')
+    flags.mark_flag_as_required('label_map_file')
+    flags.mark_flag_as_required('vocab_file')
+    flags.mark_flag_as_required('saved_model')
 
-  label_map = utils.read_label_map(FLAGS.label_map_file)
-  converter = tagging_converter.TaggingConverter(
-      tagging_converter.get_phrase_vocabulary_from_label_map(label_map),
-      FLAGS.enable_swap_tag)
-  builder = bert_example.BertExampleBuilder(label_map, FLAGS.vocab_file,
-                                            FLAGS.max_seq_length,
-                                            FLAGS.do_lower_case, converter)
-  predictor = predict_utils.LaserTaggerPredictor(
-      tf.contrib.predictor.from_saved_model(FLAGS.saved_model), builder,
-      label_map)
+    label_map = utils.read_label_map(FLAGS.label_map_file)
+    converter = tagging_converter.TaggingConverter(
+        tagging_converter.get_phrase_vocabulary_from_label_map(label_map),
+        FLAGS.enable_swap_tag, FLAGS.arbitrary_reordering)
+    builder = bert_example.BertExampleBuilder(label_map, FLAGS.vocab_file,
+                                              FLAGS.max_seq_length,
+                                              FLAGS.do_lower_case, converter,
+                                              FLAGS.arbitrary_reordering,
+                                              FLAGS.extra_tags_length)
+    predictor = predict_utils.LaserTaggerPredictor(
+        tf.contrib.predictor.from_saved_model(FLAGS.saved_model), builder,
+        label_map)
 
-  num_predicted = 0
-  with tf.gfile.Open(FLAGS.output_file, 'w') as writer:
-    for i, (sources, target) in enumerate(utils.yield_sources_and_targets(
-        FLAGS.input_file, FLAGS.input_format)):
-      logging.log_every_n(
-          logging.INFO,
-          f'{i} examples processed, {num_predicted} converted to tf.Example.',
-          100)
-      prediction = predictor.predict(sources)
-      writer.write(f'{" ".join(sources)}\t{prediction}\t{target}\n')
-      num_predicted += 1
-  logging.info(f'{num_predicted} predictions saved to:\n{FLAGS.output_file}')
+    num_predicted = 0
+    with tf.gfile.Open(FLAGS.output_file, 'w') as writer:
+        for i, (sources, target) in enumerate(
+                utils.yield_sources_and_targets(FLAGS.input_file,
+                                                FLAGS.input_format)):
+            logging.log_every_n(
+                logging.INFO,
+                f'{i} examples processed, {num_predicted} converted to tf.Example.',
+                100)
+            prediction = predictor.predict(sources)
+            writer.write(f'{" ".join(sources)}\t{prediction}\t{target}\n')
+            num_predicted += 1
+    logging.info(f'{num_predicted} predictions saved to:\n{FLAGS.output_file}')
 
 
 if __name__ == '__main__':
-  app.run(main)
+    app.run(main)
